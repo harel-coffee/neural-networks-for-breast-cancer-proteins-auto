@@ -97,7 +97,7 @@ def  set_weights(y_data, option='balanced'):
        If ‘balanced’, class weights will be given by n_samples / (n_classes * np.bincount(y)). 
        If a dictionary is given, keys are classes and values are corresponding class weights. 
        If None is given, the class weights will be uniform """
-    cw = class_weight.compute_class_weight(option, np.unique(y_data), y_data)
+    cw = class_weight.compute_class_weight(option, classes=np.unique(y_data), y=y_data)
     w = {i:j for i,j in zip(np.unique(y_data), cw)}
     return w
 
@@ -277,8 +277,8 @@ def SMOTEdf(df,sFile,seed=0):
     print('\n-> Dataframe SMOTE balancing')
     print('Initial dimensions:', df.shape)
     
-    smote = SMOTE(ratio='minority',random_state=seed)
-    X_sm, y_sm = smote.fit_sample(Xdata, Ydata)
+    smote = SMOTE(sampling_strategy='minority',random_state=seed)
+    X_sm, y_sm = smote.fit_resample(Xdata, Ydata)
     
     # create the resulted dataframe
     df = pd.DataFrame(X_sm,columns=Features)
@@ -335,7 +335,7 @@ def MLOuterCV(Xdata, Ydata, label = 'my', class_weights = {0: 1, 1: 1}, folds = 
         # clf.fit(Xdata,Ydata)
         
         # evaluate pipeline
-        scores = cross_val_score(clf, Xdata, Ydata, cv=outer_cv, scoring='roc_auc', n_jobs=-1)
+        scores = cross_val_score(clf, Xdata, Ydata, cv=outer_cv, scoring='roc_auc')
         
         df_res[name] = scores
         print('%s, %0.3f, %0.4f, %0.1f' % (name, scores.mean(), scores.std(), (time.time() - start)/60))
@@ -346,7 +346,7 @@ def MLOuterCV(Xdata, Ydata, label = 'my', class_weights = {0: 1, 1: 1}, folds = 
     return df_res
 
 
-def MyML(sFile, summaryFile, boxplotFile, nSel=0, nPCA=0, outVar='Class',nfold=3, seed=74):
+def MyML(sFile, summaryFile, boxplotFile, nSel=0, nPCA=0, outVar='Class',nfold=3, seed=74, shuffle=False):
     # nSel = 0 -> no Feature selection
     # df correction, preprocessing, scale, feature selection, PCA, SMOTE, ML
     
@@ -374,6 +374,8 @@ def MyML(sFile, summaryFile, boxplotFile, nSel=0, nPCA=0, outVar='Class',nfold=3
 
     # Remove zero variance columns
     df = Remove0VarCols(df)
+    if shuffle:
+        df['Class'] = df['Class'].sample(frac=1).reset_index(drop=True)
 
     # Save initial ds
     rawFile = sFile[:-4]+'.ds_raw.csv'
